@@ -18,7 +18,7 @@ const SceneComponent = ({
     if (!canvas) return;
 
     // Babylon.js 엔진 및 장면 초기화
-    const engine = new Engine(canvas, antialias, engineOptions, adaptToDeviceRatio);
+    const engine = new Engine(canvas, antialias, {...engineOptions, useWebGPU: true}, adaptToDeviceRatio);
     const scene = new Scene(engine, sceneOptions);
 
     // 장면 준비 완료 시 콜백 호출

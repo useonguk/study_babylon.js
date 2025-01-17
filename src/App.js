@@ -31,6 +31,10 @@ const App = () => {
   const [carName, setCarName] = useState(null); // 클릭된 차량 번호 상태
   const [sceneReady, setSceneReady] = useState(false); // 씬 준비 여부 체크
   const [camera, setCamera] = useState(null); // 카메라 참조 상태 저장
+  const [fps, setFps] = useState(0); // FPS 상태
+
+  let lastTime = 0;
+  let frameCount = 0;
 
   // 카메라를 앞뒤로 이동시키는 함수
   const moveCamera = (direction) => {
@@ -38,6 +42,16 @@ const App = () => {
     const moveSpeed = 10; // 이동 속도
     const forward = camera.getTarget().subtract(camera.position).normalize(); // 카메라가 바라보는 방향 계산
     camera.position.addInPlace(forward.scale(moveSpeed * direction)); // 이동
+  };
+
+  // FPS 계산 함수
+  const calculateFps = (time) => {
+    frameCount++;
+    if (time - lastTime >= 1000) {
+      setFps(frameCount);
+      frameCount = 0;
+      lastTime = time;
+    }
   };
 
   // Babylon.js 장면 초기화 함수
@@ -49,7 +63,6 @@ const App = () => {
     cameraInstance.attachControl(canvas, false); // 마우스 입력 비활성화
     setCamera(cameraInstance); // 카메라 참조 저장
 
-    
     // 조명 추가
     const light = new HemisphericLight("light", new Vector3(0, 1, 0), scene);
     light.intensity = 1.0;
@@ -109,14 +122,14 @@ const App = () => {
       car.velocity = randomDirection();
       car.framesUntilChange = directionChangeInterval;
 
-      car.battery = Math.floor(Math.random() * 100) + 1
+      car.battery = Math.floor(Math.random() * 100) + 1;
 
       return car;
     };
 
     // 자동차 생성
     cars = [];
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 3; i++) {
       const position = new Vector3(
         (Math.random() - 0.5) * groundSize, // 0~1까지 나오는 랜덤갑에서 -0.5를 해서 -값을 추가한 뒤 *2를 해서 -1 ~ 1사이 값을 추출 
         0,
@@ -137,7 +150,6 @@ const App = () => {
           );
           if (car) {
             setCarName(`${car.name} + ${car.battery}%`); // 클릭된 차량 번호를 상태에 저장
-            
           }
         }
       }
@@ -181,6 +193,9 @@ const App = () => {
       const forward = car.velocity.normalize();
       car.lookAt(car.position.add(forward));
     });
+
+    // FPS 계산
+    requestAnimationFrame(calculateFps);
   }, []);
 
   useEffect(() => {
@@ -237,8 +252,21 @@ const App = () => {
           onClose={() => setCarName(null)}
         />
       )}
+      <div
+        style={{
+          position: "fixed",
+          top: "10px",
+          right: "10px",
+          backgroundColor: "rgba(0, 0, 0, 0.7)",
+          color: "white",
+          padding: "5px 10px",
+          borderRadius: "5px",
+        }}
+      >
+        프레임: {fps}
+      </div>
     </div>
-  );  
+  );
 };
 
 export default App;
