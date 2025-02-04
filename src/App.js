@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
+import './reset.css'
 import {
   FreeCamera,
   Vector3,
@@ -7,6 +8,7 @@ import {
   Color3,
   StandardMaterial,
   PointerEventTypes,
+  Path3D,
 } from "@babylonjs/core";
 import SceneComponent from "./SceneComponent"; // 사용자 정의 컴포넌트
 import Modal from "./Modal"; // 모달 컴포넌트
@@ -15,6 +17,14 @@ let cars = []; // 자동차 배열
 const groundSize = 300; // ground의 크기 (width, height)
 const boundaryBuffer = 10; // 벽에 가까워지기 전 방향 변경 버퍼
 const directionChangeInterval = 100; // 방향 변경 간격 (프레임 단위)
+const CantDrivePathPoints = [
+  new Vector3(50, 0, 50),
+  new Vector3(-50, 0, 50),
+  new Vector3(-50, 0, -50),
+  new Vector3(50, 0, -50),
+  new Vector3(50, 0, 50),
+] // 금지구역 포인트
+let path; // 금지구역 합 경로
 
 // 랜덤한 방향 생성 (속도 감소)
 const randomDirection = (speedFactor = 0.05) => {
@@ -127,9 +137,13 @@ const App = () => {
       return car;
     };
 
+    path = new Path3D(CantDrivePathPoints);
+    const area = MeshBuilder.CreateLines("path", {points: path.getPoints()}, scene);
+    area.color = new Color3(0, 0, 1);
+
     // 자동차 생성
     cars = [];
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 10; i++) {
       const position = new Vector3(
         (Math.random() - 0.5) * groundSize, // 0~1까지 나오는 랜덤갑에서 -0.5를 해서 -값을 추가한 뒤 *2를 해서 -1 ~ 1사이 값을 추출 
         0,
@@ -158,11 +172,37 @@ const App = () => {
     setSceneReady(true); // 씬 준비 완료
   }, []);
 
+  // 자동차가 금지 구역 내부에 있는지 확인하는 함수
+  const isInsideNoDriveZone = (point, zonePoints) => {
+    let inside = false;
+    for (let i = 0, j = zonePoints.length - 1; i < zonePoints.length; j = i++) {
+      const xi = zonePoints[i].x, zi = zonePoints[i].z;
+      const xj = zonePoints[j].x, zj = zonePoints[j].z;
+
+      const intersect = ((zi > point.z) !== (zj > point.z)) &&
+        (point.x < ((xj - xi) * (point.z - zi)) / (zj - zi) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
   // 매 프레임 호출되는 함수
   const onRender = useCallback(() => {
     cars.forEach((car) => {
       // 위치 업데이트
       car.position.addInPlace(car.velocity);
+
+      // 다음위치 계산
+      if (car.position && car.velocity) {
+        const nextPosition = car.position.add(car.velocity);
+
+        // 금지구역 위치인지 검사
+        if(isInsideNoDriveZone(nextPosition, CantDrivePathPoints)){
+          car.velocity = randomDirection();
+        } else{
+          car.position.addInPlace(car.velocity);
+        }
+      }
 
       // 경계에 가까워지면 방향 변경
       if (
@@ -206,7 +246,7 @@ const App = () => {
   }, [sceneReady, onRender]);
 
   return (
-    <div>
+    <div style={{width: "100vw", height: "100vh"}}>
       <SceneComponent antialias onSceneReady={onSceneReady} />
       {/* 카메라 이동 버튼 */}
       <div
