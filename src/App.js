@@ -217,13 +217,6 @@ const App = () => {
       }
     });
 
-    // scene.setRenderingAutoClearDepthStencil(
-    //   renderingGroupIdx,
-    //   autoClear,
-    //   depth,
-    //   stencil
-    // );
-
     setSceneReady(true); // 씬 준비 완료
     // scene.unfreezeActiveMeshes();
   }, []);
