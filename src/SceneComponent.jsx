@@ -21,6 +21,16 @@ const SceneComponent = ({
     const engine = new Engine(canvas, antialias, {...engineOptions, useWebGPU: true}, adaptToDeviceRatio);
     const scene = new Scene(engine, sceneOptions);
 
+    scene.constantlyUpdateMeshUnderPointer = true;
+    scene.autoClear = false; // Color buffer
+    scene.autoClearDepthAndStencil = false; // Depth and stencil, obviously
+    // scene.setRenderingAutoClearDepthStencil(
+    //   renderingGroupIdx,
+    //   autoClear,
+    //   depth,
+    //   stencil
+    // );
+
     // 장면 준비 완료 시 콜백 호출
     if (scene.isReady()) {
       onSceneReady(scene);

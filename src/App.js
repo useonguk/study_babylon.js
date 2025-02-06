@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
-import './reset.css'
+import "./reset.css";
 import {
   FreeCamera,
   Vector3,
@@ -9,6 +9,9 @@ import {
   StandardMaterial,
   PointerEventTypes,
   Path3D,
+  CreatePolygon,
+  Vector2,
+  PolygonMeshBuilder,
 } from "@babylonjs/core";
 import SceneComponent from "./SceneComponent"; // 사용자 정의 컴포넌트
 import Modal from "./Modal"; // 모달 컴포넌트
@@ -23,7 +26,7 @@ const CantDrivePathPoints = [
   new Vector3(-50, 0, -50),
   new Vector3(50, 0, -50),
   new Vector3(50, 0, 50),
-] // 금지구역 포인트
+]; // 금지구역 포인트
 let path; // 금지구역 합 경로
 
 // 랜덤한 방향 생성 (속도 감소)
@@ -49,7 +52,7 @@ const App = () => {
   // 카메라를 앞뒤로 이동시키는 함수
   const moveCamera = (direction) => {
     if (!camera) return;
-    const moveSpeed = 10; // 이동 속도
+    const moveSpeed = 20; // 이동 속도
     const forward = camera.getTarget().subtract(camera.position).normalize(); // 카메라가 바라보는 방향 계산
     camera.position.addInPlace(forward.scale(moveSpeed * direction)); // 이동
   };
@@ -67,7 +70,11 @@ const App = () => {
   // Babylon.js 장면 초기화 함수
   const onSceneReady = useCallback((scene) => {
     // 카메라 생성
-    const cameraInstance = new FreeCamera("camera1", new Vector3(100, 500, -0), scene);
+    const cameraInstance = new FreeCamera(
+      "camera1",
+      new Vector3(100, 500, -0),
+      scene
+    );
     cameraInstance.setTarget(Vector3.Zero());
     const canvas = scene.getEngine().getRenderingCanvas();
     cameraInstance.attachControl(canvas, false); // 마우스 입력 비활성화
@@ -78,25 +85,38 @@ const App = () => {
     light.intensity = 1.0;
 
     // 바닥 생성
-    const ground = MeshBuilder.CreateGround("ground", { width: groundSize, height: groundSize }, scene);
+    const ground = MeshBuilder.CreateGround(
+      "ground",
+      { width: groundSize, height: groundSize },
+      scene
+    );
     const groundMaterial = new StandardMaterial("groundMaterial", scene);
     groundMaterial.diffuseColor = new Color3(0.5, 0.8, 0.5);
     groundMaterial.specularColor = new Color3(0, 0, 0);
     groundMaterial.reflectivity = 0;
     groundMaterial.backFaceCulling = false;
+    groundMaterial.freeze();
     ground.isPickable = false;
 
     ground.material = groundMaterial;
 
     // 자동차 생성 함수
     const createCar = (name, position, color) => {
-      const carBody = MeshBuilder.CreateBox(`${name}_Body`, { width: 4, height: 1, depth: 6 }, scene);
+      const carBody = MeshBuilder.CreateBox(
+        `${name}_Body`,
+        { width: 4, height: 1, depth: 6 },
+        scene
+      );
       carBody.position.y = 1;
       const carMaterial = new StandardMaterial(`${name}_Material`, scene);
       carMaterial.diffuseColor = new Color3(...color);
       carBody.material = carMaterial;
 
-      const carRoof = MeshBuilder.CreateBox(`${name}_Roof`, { width: 2.5, height: 1, depth: 3 }, scene);
+      const carRoof = MeshBuilder.CreateBox(
+        `${name}_Roof`,
+        { width: 2.5, height: 1, depth: 3 },
+        scene
+      );
       carRoof.position.y = 2;
       carRoof.material = carMaterial;
 
@@ -109,16 +129,27 @@ const App = () => {
       ];
 
       wheelPositions.forEach((pos, index) => {
-        const wheel = MeshBuilder.CreateCylinder(`${name}_Wheel${index}`, { diameter: 1, height: 0.5 }, scene);
+        const wheel = MeshBuilder.CreateCylinder(
+          `${name}_Wheel${index}`,
+          { diameter: 1, height: 0.5 },
+          scene
+        );
         wheel.rotation.z = Math.PI / 2;
         wheel.position = new Vector3(...pos);
-        const wheelMaterial = new StandardMaterial(`${name}_WheelMaterial`, scene);
+        const wheelMaterial = new StandardMaterial(
+          `${name}_WheelMaterial`,
+          scene
+        );
         wheelMaterial.diffuseColor = new Color3(0, 0, 0);
         wheel.material = wheelMaterial;
         wheels.push(wheel);
       });
 
-      const car = MeshBuilder.CreateBox(name, { width: 1, height: 1, depth: 1 }, scene);
+      const car = MeshBuilder.CreateBox(
+        name,
+        { width: 1, height: 1, depth: 1 },
+        scene
+      );
       car.isVisible = false;
       carBody.isPickable = true;
       carRoof.isPickable = true;
@@ -137,17 +168,33 @@ const App = () => {
       return car;
     };
 
-    path = new Path3D(CantDrivePathPoints);
-    const area = MeshBuilder.CreateLines("path", {points: path.getPoints()}, scene);
-    area.color = new Color3(0, 0, 1);
+    // // 금지구역 설정(선)
+    // path = new Path3D(CantDrivePathPoints);
+    // const area = MeshBuilder.CreateLines(
+    //   "path",
+    //   { points: path.getPoints() },
+    //   scene
+    // );
+    // area.color = new Color3(0, 0, 1);
+    // // createNoDriveZone(scene);
+
+    // const dontArea = MeshBuilder.CreateBox(
+    //   "dontArea",
+    //   { size: 100, height: 1 },
+    //   scene
+    // );
+    // dontArea.position.x = 0;
+    // dontArea.position.y = 1;
+    // dontArea.position.z = 0;
+    // dontArea.doNotSyncBoundingInfo = true;
 
     // 자동차 생성
     cars = [];
     for (let i = 0; i < 10; i++) {
       const position = new Vector3(
-        (Math.random() - 0.5) * groundSize, // 0~1까지 나오는 랜덤갑에서 -0.5를 해서 -값을 추가한 뒤 *2를 해서 -1 ~ 1사이 값을 추출 
+        100, // 0~1까지 나오는 랜덤갑에서 -0.5를 해서 -값을 추가한 뒤 *2를 해서 -1 ~ 1사이 값을 추출
         0,
-        (Math.random() - 0.5) * groundSize
+        100
       );
       const color = [Math.random(), Math.random(), Math.random()]; // 랜덤 색상
       cars.push(createCar(`car${i + 1}`, position, color));
@@ -155,12 +202,13 @@ const App = () => {
 
     // 자동차를 클릭했을 때 이벤트 처리
     scene.onPointerObservable.add((pointerInfo) => {
+      // scene.freezeActiveMeshes();
       if (pointerInfo.type === PointerEventTypes.POINTERPICK) {
         const pickInfo = pointerInfo.pickInfo;
         if (pickInfo && pickInfo.pickedMesh) {
           const pickedMesh = pickInfo.pickedMesh;
-          const car = cars.find(
-            (c) => c.getChildMeshes().some((child) => child === pickedMesh)
+          const car = cars.find((c) =>
+            c.getChildMeshes().some((child) => child === pickedMesh)
           );
           if (car) {
             setCarName(`${car.name} + ${car.battery}%`); // 클릭된 차량 번호를 상태에 저장
@@ -169,22 +217,33 @@ const App = () => {
       }
     });
 
+    // scene.setRenderingAutoClearDepthStencil(
+    //   renderingGroupIdx,
+    //   autoClear,
+    //   depth,
+    //   stencil
+    // );
+
     setSceneReady(true); // 씬 준비 완료
+    // scene.unfreezeActiveMeshes();
   }, []);
 
-  // 자동차가 금지 구역 내부에 있는지 확인하는 함수
-  const isInsideNoDriveZone = (point, zonePoints) => {
-    let inside = false;
-    for (let i = 0, j = zonePoints.length - 1; i < zonePoints.length; j = i++) {
-      const xi = zonePoints[i].x, zi = zonePoints[i].z;
-      const xj = zonePoints[j].x, zj = zonePoints[j].z;
+  // // 자동차가 금지 구역 내부에 있는지 확인하는 함수
+  // const isInsideNoDriveZone = (point, zonePoints) => {
+  //   let inside = false;
+  //   for (let i = 0, j = zonePoints.length - 1; i < zonePoints.length; j = i++) {
+  //     const xi = zonePoints[i].x,
+  //       zi = zonePoints[i].z;
+  //     const xj = zonePoints[j].x,
+  //       zj = zonePoints[j].z;
 
-      const intersect = ((zi > point.z) !== (zj > point.z)) &&
-        (point.x < ((xj - xi) * (point.z - zi)) / (zj - zi) + xi);
-      if (intersect) inside = !inside;
-    }
-    return inside;
-  }
+  //     const intersect =
+  //       zi > point.z !== zj > point.z &&
+  //       point.x < ((xj - xi) * (point.z - zi)) / (zj - zi) + xi;
+  //     if (intersect) inside = !inside;
+  //   }
+  //   return inside;
+  // };
 
   // 매 프레임 호출되는 함수
   const onRender = useCallback(() => {
@@ -196,12 +255,11 @@ const App = () => {
       if (car.position && car.velocity) {
         const nextPosition = car.position.add(car.velocity);
 
-        // 금지구역 위치인지 검사
-        if(isInsideNoDriveZone(nextPosition, CantDrivePathPoints)){
-          car.velocity = randomDirection();
-        } else{
-          car.position.addInPlace(car.velocity);
-        }
+        // // 금지구역 위치인지 검사
+        // if (isInsideNoDriveZone(nextPosition, CantDrivePathPoints)) {
+        //   car.velocity = randomDirection();
+        // }
+        car.position.addInPlace(car.velocity);
       }
 
       // 경계에 가까워지면 방향 변경
@@ -246,7 +304,7 @@ const App = () => {
   }, [sceneReady, onRender]);
 
   return (
-    <div style={{width: "100vw", height: "100vh"}}>
+    <div style={{ width: "100vw", height: "100vh" }}>
       <SceneComponent antialias onSceneReady={onSceneReady} />
       {/* 카메라 이동 버튼 */}
       <div
