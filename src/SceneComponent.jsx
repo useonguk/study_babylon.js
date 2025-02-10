@@ -21,15 +21,25 @@ const SceneComponent = ({
     const engine = new Engine(canvas, antialias, {...engineOptions, useWebGPU: true}, adaptToDeviceRatio);
     const scene = new Scene(engine, sceneOptions);
 
+    scene.freezeActiveMeshes();
+
     scene.constantlyUpdateMeshUnderPointer = true;
     scene.autoClear = false; // Color buffer
-    scene.autoClearDepthAndStencil = false; // Depth and stencil, obviously
-    // scene.setRenderingAutoClearDepthStencil(
-    //   renderingGroupIdx,
-    //   autoClear,
-    //   depth,
-    //   stencil
-    // );
+    scene.autoClearDepthAndStencil = false; 
+    scene.setRenderingAutoClearDepthStencil(
+      5,
+      true, // 지우리 활성화
+      true, // 버퍼 지우기 활성화
+      true // 스텐실 버퍼 지우기 활성화
+    );
+    scene.blockMaterialDirtyMechanism = true;
+    scene.getAnimationRatio(); // 프레임 낮춰서 성능 최적화
+
+    scene.blockfreeActiveMeshesAndRenderingGroups = true;
+    /*
+    * Dispose all the meshes in a row here
+    */
+    scene.blockfreeActiveMeshesAndRenderingGroups = false;
 
     // 장면 준비 완료 시 콜백 호출
     if (scene.isReady()) {
